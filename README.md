@@ -1,81 +1,86 @@
 # 📑 Bookmark Board — README
 
-A zero-backend, single-file **bookmark manager** that organizes links into **columns (categories)** across **multiple tabs (boards)** with **search, drag-and-drop, dark/light themes, JSON import/export, and a layout lock**. All data is stored locally via `localStorage`—**no servers, no tracking**.
+A single-file, local-first bookmark dashboard. Multiple tabs (boards), categories as cards, fast search, drag-and-drop, light/dark theme, JSON import/export, and a **Lock Layout** control — all persisted in `localStorage`.
 
 ---
 
-## TL;DR
+## ✅ What’s in this code
 
-* **Open `index.html`** in any modern browser → start using.
-* Data auto-saves to `localStorage` (`bookmarkBoard.v1`).
-* Use **⚙️ Settings** to add tabs/categories, import/export JSON, toggle theme, and **lock** layout.
-
----
-
-## Table of Contents
-
-* [Features](#features)
-* [Demo / Local Run](#demo--local-run)
-* [How It Works](#how-it-works)
-* [Data Model](#data-model)
-* [Keyboard & UI UX](#keyboard--ui-ux)
-* [Configuration & Customization](#configuration--customization)
-* [Troubleshooting](#troubleshooting)
-* [Roadmap](#roadmap)
-* [Skills & Tech Stack](#skills--tech-stack)
-* [Contributing](#contributing)
-* [License](#license)
+*  **Pure front-end**: 1 HTML file (HTML + CSS + vanilla JS). No frameworks, no build.
+*  **Tabs (boards)**: create/delete, click to switch, drag to reorder (when unlocked).
+*  **Categories**: cards with title, collapse/expand, add/delete, reorder via Settings.
+*  **Bookmarks**: add, open in new tab, favicon auto-fetch, quick **✏️ Edit** (when unlocked).
+*  **Search**: “Find Category” and “Search Bookmarks” inputs filter live.
+*  **Drag-and-drop**: move links between categories (unlocked only).
+*  **Theme**: toggle Light/Dark (persists).
+*  **Lock Layout**: freezes editing & drag to prevent accidental changes.
+*  **Import/Export JSON**: backup/restore your boards.
+*  **Local persistence**: everything saved to `localStorage` under key `bookmarkBoard.v1`.
 
 ---
 
-## Features
+## 🚀 Quick start
 
-* **Multi-tab boards**: switch and reorder tabs; segregate contexts (Work, Study, Personal).
-* **Category columns**: collapsible sections with per-category link counts.
-* **Link ops**: add/edit links, favicon auto-fetch, open in new tab.
-* **Drag-and-drop**: move links across categories (when unlocked).
-* **Dual search**: filter by **Category** name and **Bookmark** text/URL.
-* **Theme switch**: dark ↔ light (persisted).
-* **Layout lock**: freeze editing & DnD to avoid accidental changes.
-* **JSON import/export**: full data portability.
-* **Zero dependencies**: pure HTML/CSS/JS; works fully offline.
+1. **Save the file**
 
----
+   * Name it e.g. `bookmark-board.html`.
 
-## Demo / Local Run
+2. **Open it**
 
-1. Save your file as `index.html` (use the provided code).
-2. Double-click `index.html` to open in Chrome/Edge/Firefox/Safari.
-3. Click **⚙️ Settings** to add a **Category** and start dropping links.
+   * Double-click to open in any modern browser (Chrome/Edge/Firefox/Safari).
+   * No server required.
+
+3. **Start using**
+
+   * Click **⚙️ Settings** (top-right) to manage layout and data.
+   * Data auto-saves to your browser’s `localStorage`.
 
 ---
 
-## How It Works
+## 🧭 Core workflow (how to use)
 
-* **Persistence**: Uses `localStorage` with key `bookmarkBoard.v1`.
-* **State shape**: `{ tabs: [...], current: <index> }`
-* **Lock**: `localStorage['bookmarkBoardLockLayout'] = 'true'|'false'`
-* **Theme**: `localStorage['bookmarkBoardTheme'] = 'dark'|'light'`
-* **Favicons**: `https://www.google.com/s2/favicons?domain=<host>&sz=32`
-* **DnD**: HTML5 Drag & Drop API with JSON payload `{ linkId, fromCatId }`
+*  **Add a Tab** → **⚙️ Settings** → **+ Tab**.
+*  **Delete current Tab** → **⚙️ Settings** → **Delete Tab**.
+*  **Reorder Tabs** → drag tab headers (only when **Unlocked**).
+*  **Add a Category** → **⚙️ Settings** → **+ Category**.
+*  **Rename/Delete Category** → Card **⚙️** → choose **Rename** or **Delete**.
+*  **Reorder Categories** → **⚙️ Settings** → **Reorder Categories** (↑ / ↓).
+*  **Collapse/Expand Category** → Card **▼ / ▶**.
+*  **Add Bookmark** → Card **+** → enter **URL** and **Title**.
+*  **Edit Bookmark** → Click **✏️** next to a link (only when **Unlocked**).
+*  **Move Bookmark** → Drag a link to another category (only when **Unlocked**).
+*  **Search** → Top bar: **Find Category** or **Search Bookmarks**.
+*  **Theme** → **⚙️ Settings** → **Toggle** (Light/Dark).
+*  **Lock Layout** → **⚙️ Settings** → **Layout: On/Off** (prevents edits/drag).
+*  **Export** → **⚙️ Settings** → **Export JSON** (downloads a backup).
+*  **Import** → **⚙️ Settings** → **Import JSON** (choose a previous backup).
 
 ---
 
-## Data Model
+## 🛠 Tech stack
+
+*  **HTML5** for structure
+*  **CSS** (no frameworks) for theming & layout
+*  **JavaScript (ES6)** for state & interactions
+*  **localStorage** for persistence
+
+---
+
+## 📂 Data model (stored in `localStorage`)
 
 ```json
 {
   "tabs": [
     {
-      "id": "auto",
+      "id": "string",
       "title": "Main",
       "categories": [
         {
-          "id": "auto",
-          "title": "Search Engines",
+          "id": "string",
+          "title": "Category Name",
           "collapsed": false,
           "links": [
-            { "id": "auto", "title": "Google", "url": "https://google.com" }
+            { "id": "string", "title": "Example", "url": "https://example.com" }
           ]
         }
       ]
@@ -85,92 +90,44 @@ A zero-backend, single-file **bookmark manager** that organizes links into **col
 }
 ```
 
-* **IDs** are generated (`uid()`).
-* `collapsed` is ensured on load for backward compatibility.
+---
 
-### Import / Export
+## 🔐 Privacy & limitations
 
-* **Export**: **⚙️ → Export JSON** downloads `bookmark-board-<timestamp>.json`.
-* **Import**: **⚙️ → Import JSON** chooses a JSON file matching the structure above.
+*  **Local-first**: data never leaves your browser (no calls to any backend).
+*  **Favicon fetch**: uses Google’s favicon service by domain (for icons only).
+*  **Per-browser**: your boards live in the browser where you use the file.
+*  **Clearing site data** will remove your boards — use **Export JSON** regularly.
 
 ---
 
-## Keyboard & UI UX
+## 🧪 Compatibility
 
-* **Tabs**: click tab name to switch; drag tab items to reorder (when unlocked).
-* **Categories**:
-
-  * **▼ / ▶** toggles collapse
-  * **+** adds link
-  * **⚙️** rename/delete
-* **Links**: drag to move (unlocked). Edit via ✏️ button (visible when unlocked).
-* **Search**:
-
-  * **Find Category** filters category titles
-  * **Search Bookmarks** matches link title+URL
+*  Works on modern desktop browsers (Chromium/Firefox/Safari).
+*  Mobile browsers work but drag-and-drop UX varies by device.
 
 ---
 
-## Configuration & Customization
+## 📦 How to add this to GitHub
 
-* **Make layout toggle look like ON/OFF**: already implemented via `updateLockToggleButton()`.
-* **Change theme defaults**: update CSS variables in `:root` and `.light-mode`.
-* **Branding**: change `<title>`, add a logo in the nav, tweak the palette.
-* **Validation**: URL prompts enforce `http(s)://`—extend as needed.
-* **Storage key**: change `STORAGE_KEY` if you want parallel boards on the same browser.
+1. Create a new repo (e.g., `bookmark-board`).
+2. Add two files:
 
----
-
-## Troubleshooting
-
-* **“Nothing saves”**: Check browser storage settings; `localStorage` must be enabled.
-* **Favicons not showing**: Some internal/unsupported domains won’t return icons; link still works.
-* **Drag & drop not working**: Ensure **Layout** is **Unlocked** in **⚙️ Settings**.
-* **Import says “Invalid JSON structure”**: Ensure your JSON has `tabs` as an array and matches the model.
-* **Accidental edits**: Lock the layout (⚙️ → **Toggle** to **Locked**).
+   * `bookmark-board.html` (your code above)
+   * `README.md` (this file)
+3. Commit & push.
+4. (Optional) Enable **GitHub Pages** → *Deploy from branch* → open the published URL.
 
 ---
 
-## Roadmap
+## 📝 License
 
-* [ ] Inline, modal-based editors (no `prompt()`).
-* [ ] Per-tab search and tag metadata for links.
-* [ ] Optional cloud sync (OneDrive/GitHub Gist) with explicit user consent.
-* [ ] Keyboard shortcuts (add link, jump to search fields).
-* [ ] Accessibility polish (ARIA landmarks, focus states).
-* [ ] Optional export of **tab/category** as Markdown.
+MIT (recommended). Add a `LICENSE` file if you want to open-source it.
 
 ---
 
-## Skills & Tech Stack
+## 💡 Pro tips
 
-**Tech:**
-
-* HTML5, CSS3 (custom properties, responsive grid)
-* Vanilla JavaScript (ES6+): DOM, Events, `localStorage`, Drag & Drop API, FileReader API
-
-**Skills demonstrated:**
-
-* Front-end architecture without frameworks
-* State management using browser storage
-* UX for information architecture (tabs, categories, search)
-* Defensive coding (back-compat, validation, lock mode)
-* Data portability (JSON import/export)
-
----
-
-## Contributing
-
-PRs welcome. Keep it **simple, dependency-free, and privacy-first**.
-
-1. Fork → Feature branch → PR with a crisp changelog.
-2. Add before/after screenshots or a short Loom/GIF if UI changes.
-3. No libraries unless they are absolutely necessary.
-
----
-
-## License
-
-**MIT** — do what you want, just don’t blame the messenger.
-
----
+*  Keep **Lock Layout = On** during daily use to avoid accidental edits.
+*  Use **Export JSON** before major changes.
+*  Seed categories (e.g., Docs, Learning, Tools) to stay organized from day one.
