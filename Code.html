@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📑 Bookmark Board</title>
+  <style>
+    /*
+     * Bookmark Board
+     *
+     * This layout organises bookmarks into columns with multiple tabs (boards).
+     * It supports search, drag‑and‑drop between categories, collapsible sections,
+     * dark/light themes, import/export and a lock mode to freeze editing.
+     * Data is persisted in localStorage so everything stays on your machine.
+     */
+
+    :root {
+      --bg: #1f2937;            /* slate gray dark */
+      --panel-bg: #111827;      /* dark panels */
+      --border: #374151;        /* border colour */
+      --text: #e5e7eb;          /* light text */
+      --muted: #9ca3af;         /* muted text */
+      --primary: #3b82f6;       /* primary accent (blue) */
+      --radius: 8px;
+      --shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    /* Light mode overrides – swap colours when body has .light-mode */
+    body.light-mode {
+      --bg: #f3f4f6;
+      --panel-bg: #ffffff;
+      --border: #d1d5db;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.5;
+    }
+    /* Navigation bar with tabs and controls */
+    nav {
+      display: flex;
+      align-items: center;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .tabs {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    nav .tabs li {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+    nav .tabs button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    nav .tabs button.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+    /* Controls on right */
+    nav .controls {
+      margin-left: auto;
+      display: flex;
+      gap: 0.5rem;
+      padding-right: 1rem;
+    }
+    nav .controls button {
+      background: var(--primary);
+      border: none;
+      color: white;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    nav .controls button.secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    /* Search inputs area */
+    .search-area {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .search-area input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      /* Use panel background so the fields blend in both themes */
+      background: var(--panel-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .search-area input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Board grid */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .empty-board {
+      text-align: center;
+      color: var(--muted);
+      padding: 3rem;
+      grid-column: 1 / -1;
+    }
+
+    /* Category card */
+    .category {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Hide the links when collapsed */
+    .category.collapsed .links { display: none; }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .category-title {
+      font-weight: 600;
+      margin: 0;
+      font-size: 1rem;
+      flex: 1;
+    }
+    .category-actions button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .category-actions button:hover { color: var(--primary); }
+
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    /* New wrapper for each link and its edit button */
+    .link-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .link-item .link {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      line-height: 1.3;
+    }
+    .link-item button.edit-link {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .link-item button.edit-link:hover {
+      color: var(--primary);
+    }
+    .link img.favicon {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+    }
+    .link:hover { text-decoration: underline; }
+
+    /* Settings modal styles */
+    #settingsModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    #settingsModal.active { display: flex; }
+    #settingsModal .modal-content {
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      min-width: 280px;
+      max-width: 90%;
+      box-shadow: var(--shadow);
+    }
+    #settingsModal .modal-content h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    #settingsModal .modal-content .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    #settingsModal .modal-content .setting-row button {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    /* Category order row arrow buttons: smaller controls */
+    #categoriesOrderContainer .setting-row button {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--border);
+      color: var(--text);
+      cursor: pointer;
+      margin-left: 0.25rem;
+    }
+    #categoriesOrderContainer .setting-row button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #settingsModal .modal-content button.close-btn {
+      background: var(--border);
+      color: var(--text);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation bar with tabs and controls -->
+  <nav>
+    <ul class="tabs" id="tabsList"></ul>
+    <div class="controls">
+      <!-- Removed Add Tab button from the navigation. Tab management is handled in settings. -->
+      <button id="settingsBtn" class="secondary" title="Settings">⚙️ Settings</button>
+      <input type="file" id="fileInput" accept="application/json" hidden />
+    </div>
+  </nav>
+  <!-- Search area with category and bookmark search -->
+  <div class="search-area">
+    <input id="searchCategory" type="text" placeholder="Find Category" />
+    <input id="searchBookmark" type="text" placeholder="Search Bookmarks" />
+  </div>
+  <!-- Board content -->
+  <div id="board" class="board"></div>
+  <!-- Empty state message -->
+  <div id="emptyState" class="empty-board" hidden>
+    No categories yet. Use the <strong>Settings</strong> (⚙️) button to add your first one.
+  </div>
+  <!-- Settings Modal -->
+  <div id="settingsModal">
+    <div class="modal-content">
+      <h2>Settings</h2>
+      <!-- Layout (lock) row -->
+      <div class="setting-row">
+        <span>Layout</span>
+        <span id="lockStatus">Unlocked</span>
+        <button id="toggleLockBtn" class="secondary">Toggle</button>
+      </div>
+      <!-- Theme row -->
+      <div class="setting-row">
+        <span>Theme</span>
+        <button id="settingsThemeBtn">Toggle</button>
+      </div>
+      <!-- Add Tab row (migrated from nav) -->
+      <div class="setting-row" id="addTabRow">
+        <span>Add Tab</span>
+        <button id="settingsAddTabBtn">+ Tab</button>
+      </div>
+      <!-- Delete current tab row -->
+      <div class="setting-row" id="deleteTabRow">
+        <span>Current Tab</span>
+        <button id="settingsDeleteTabBtn" class="secondary">Delete Tab</button>
+      </div>
+      <!-- Add Category row: moved below tab operations for clearer grouping -->
+      <div class="setting-row">
+        <span>Add Category</span>
+        <button id="settingsAddCategoryBtn">+ Category</button>
+      </div>
+      <!-- Dynamic list of categories for reordering -->
+      <div id="categoriesOrderContainer"></div>
+      <!-- Import row -->
+      <div class="setting-row">
+        <span>Import</span>
+        <button id="settingsImportBtn">Import JSON</button>
+      </div>
+      <!-- Export row -->
+      <div class="setting-row">
+        <span>Export</span>
+        <button id="settingsExportBtn">Export JSON</button>
+      </div>
+      <button id="settingsCloseBtn" class="close-btn">Close</button>
+    </div>
+  </div>
+  <script>
+    // Storage key for localStorage
+    const STORAGE_KEY = 'bookmarkBoard.v1';
+    let tabsData = [];
+    let currentTabIndex = 0;
+
+    // DOM references
+    const tabsList = document.getElementById('tabsList');
+    const boardEl = document.getElementById('board');
+    const emptyStateEl = document.getElementById('emptyState');
+    const searchCategoryInput = document.getElementById('searchCategory');
+    const searchBookmarkInput = document.getElementById('searchBookmark');
+    const fileInput = document.getElementById('fileInput');
+
+    // Settings modal elements
+    const settingsModal = document.getElementById('settingsModal');
+    const lockStatusEl = document.getElementById('lockStatus');
+    const toggleLockBtn = document.getElementById('toggleLockBtn');
+    const settingsAddCategoryBtn = document.getElementById('settingsAddCategoryBtn');
+    const settingsThemeBtn = document.getElementById('settingsThemeBtn');
+    const settingsDeleteTabBtn = document.getElementById('settingsDeleteTabBtn');
+    const deleteTabRow = document.getElementById('deleteTabRow');
+    const settingsImportBtn = document.getElementById('settingsImportBtn');
+    const settingsExportBtn = document.getElementById('settingsExportBtn');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    const settingsAddTabBtn = document.getElementById('settingsAddTabBtn');
+    const categoriesOrderContainer = document.getElementById('categoriesOrderContainer');
+
+    // Lock layout state: when true, editing/dragging is disabled
+    let lockLayout = false;
+    function loadLockLayout() {
+      lockLayout = localStorage.getItem('bookmarkBoardLockLayout') === 'true';
+    }
+    function toggleLockLayout() {
+      lockLayout = !lockLayout;
+      localStorage.setItem('bookmarkBoardLockLayout', lockLayout);
+      // Update the toggle button and status display
+      updateLockToggleButton();
+      render();
+    }
+
+    // Reflect the current lockLayout state in the UI (status text and button)
+    function updateLockToggleButton() {
+      if (lockStatusEl) {
+        lockStatusEl.textContent = lockLayout ? 'Locked' : 'Unlocked';
+      }
+      if (toggleLockBtn) {
+        // Show ON/OFF on the button itself
+        toggleLockBtn.textContent = lockLayout ? 'Off' : 'On';
+        // When locked, style the button as secondary; when unlocked use primary style
+        if (lockLayout) {
+          toggleLockBtn.classList.add('secondary');
+        } else {
+          toggleLockBtn.classList.remove('secondary');
+        }
+      }
+    }
+
+    // Generate unique id
+    function uid() {
+      return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    }
+
+    // Load data from localStorage
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const obj = JSON.parse(raw);
+          if (obj && Array.isArray(obj.tabs)) {
+            tabsData = obj.tabs;
+            currentTabIndex = obj.current || 0;
+          } else {
+            tabsData = [];
+            currentTabIndex = 0;
+          }
+        } catch {
+          tabsData = [];
+          currentTabIndex = 0;
+        }
+      }
+      if (tabsData.length === 0) {
+        // Seed with a default tab
+        tabsData.push({ id: uid(), title: 'Main', categories: [] });
+      }
+      if (currentTabIndex >= tabsData.length) currentTabIndex = 0;
+      // Ensure collapsed flag exists
+      tabsData.forEach(tab => {
+        if (Array.isArray(tab.categories)) {
+          tab.categories.forEach(cat => {
+            if (typeof cat.collapsed !== 'boolean') cat.collapsed = false;
+          });
+        }
+      });
+      // Load theme and lock state
+      loadTheme();
+      loadLockLayout();
+      // Ensure the toggle button reflects the initial lock state
+      updateLockToggleButton();
+    }
+    // Save data to localStorage
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs: tabsData, current: currentTabIndex }));
+    }
+
+    // Theme persistence
+    function loadTheme() {
+      const theme = localStorage.getItem('bookmarkBoardTheme') || 'dark';
+      if (theme === 'light') {
+        document.body.classList.add('light-mode');
+      } else {
+        document.body.classList.remove('light-mode');
+      }
+    }
+    function toggleTheme() {
+      const isLight = document.body.classList.contains('light-mode');
+      if (isLight) {
+        document.body.classList.remove('light-mode');
+        localStorage.setItem('bookmarkBoardTheme', 'dark');
+      } else {
+        document.body.classList.add('light-mode');
+        localStorage.setItem('bookmarkBoardTheme', 'light');
+      }
+    }
+
+    // Render tab navigation
+    // Track index of tab being dragged for reordering
+    let draggingTabIndex = null;
+    function renderTabs() {
+      tabsList.innerHTML = '';
+      tabsData.forEach((tab, index) => {
+        const li = document.createElement('li');
+        // Tab button
+        const btn = document.createElement('button');
+        btn.textContent = tab.title;
+        btn.classList.toggle('active', index === currentTabIndex);
+        btn.addEventListener('click', () => {
+          // When clicking a tab, switch to it. Skip if dragging is in progress.
+          if (draggingTabIndex !== null) return;
+          currentTabIndex = index;
+          save();
+          render();
+        });
+        li.appendChild(btn);
+        // Enable drag-and-drop on tabs when layout is unlocked and there is more than one tab
+        if (!lockLayout && tabsData.length > 1) {
+          li.draggable = true;
+          li.addEventListener('dragstart', (e) => {
+            draggingTabIndex = index;
+            // Use a transparent drag image to avoid default preview
+            const img = new Image();
+            img.src = '';
+            e.dataTransfer.setDragImage(img, 0, 0);
+          });
+          li.addEventListener('dragend', () => {
+            draggingTabIndex = null;
+          });
+          li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+          });
+          li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggingTabIndex === null) return;
+            const dropIndex = Array.from(tabsList.children).indexOf(li);
+            if (dropIndex < 0 || dropIndex === draggingTabIndex) return;
+            // Reorder the tabsData array
+            const moved = tabsData.splice(draggingTabIndex, 1)[0];
+            tabsData.splice(dropIndex, 0, moved);
+            // Update currentTabIndex to new position if needed
+            if (draggingTabIndex === currentTabIndex) {
+              currentTabIndex = dropIndex;
+            } else if (draggingTabIndex < currentTabIndex && dropIndex >= currentTabIndex) {
+              currentTabIndex--;
+            } else if (draggingTabIndex > currentTabIndex && dropIndex <= currentTabIndex) {
+              currentTabIndex++;
+            }
+            save();
+            render();
+          });
+        }
+        tabsList.appendChild(li);
+      });
+    }
+    // Render the board (categories and links) for the current tab
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      const tab = tabsData[currentTabIndex];
+      if (!tab || !Array.isArray(tab.categories) || tab.categories.length === 0) {
+        emptyStateEl.hidden = false;
+        return;
+      }
+      emptyStateEl.hidden = true;
+      const catFilter = searchCategoryInput.value.trim().toLowerCase();
+      const linkFilter = searchBookmarkInput.value.trim().toLowerCase();
+      tab.categories.forEach(cat => {
+        if (catFilter && !cat.title.toLowerCase().includes(catFilter)) return;
+        const card = document.createElement('div');
+        card.className = 'category';
+        if (cat.collapsed) card.classList.add('collapsed');
+        // Allow dropping onto categories when unlocked
+        if (!lockLayout) {
+          card.addEventListener('dragover', (e) => { e.preventDefault(); });
+          card.addEventListener('drop', (e) => {
+            e.preventDefault();
+            try {
+              const dataStr = e.dataTransfer.getData('text/plain');
+              if (!dataStr) return;
+              const data = JSON.parse(dataStr);
+              const { linkId, fromCatId } = data || {};
+              if (!linkId || !fromCatId) return;
+              if (fromCatId === cat.id) return;
+              const fromCat = tab.categories.find(c => c.id === fromCatId);
+              if (!fromCat) return;
+              const linkIndex = fromCat.links.findIndex(l => l.id === linkId);
+              if (linkIndex < 0) return;
+              const [linkObj] = fromCat.links.splice(linkIndex, 1);
+              if (!cat.links.some(l => l.id === linkObj.id)) cat.links.push(linkObj);
+              save();
+              render();
+            } catch {}
+          });
+        }
+        // Category header with title and actions
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'category-title';
+        titleEl.textContent = `${cat.title} (${cat.links.length})`;
+        const actions = document.createElement('div');
+        actions.className = 'category-actions';
+        // Collapse/expand button (triangle)
+        const collapseBtn = document.createElement('button');
+        collapseBtn.title = cat.collapsed ? 'Expand Category' : 'Collapse Category';
+        collapseBtn.textContent = cat.collapsed ? '▶' : '▼';
+        collapseBtn.addEventListener('click', () => {
+          cat.collapsed = !cat.collapsed;
+          save();
+          render();
+        });
+        // Add link button
+        const addLinkBtn = document.createElement('button');
+        addLinkBtn.title = 'Add Link';
+        addLinkBtn.textContent = '+';
+        addLinkBtn.addEventListener('click', () => {
+          promptAddLink(cat);
+        });
+        // Settings (rename/delete) button using gear icon
+        const gearBtn = document.createElement('button');
+        gearBtn.title = 'Category Settings';
+        gearBtn.textContent = '⚙️';
+        gearBtn.addEventListener('click', () => {
+          if (lockLayout) {
+            alert('Layout is locked. Unlock in Settings to edit.');
+            return;
+          }
+          const choice = prompt('Category settings:\n1. Rename\n2. Delete\nEnter 1 or 2:');
+          if (!choice) return;
+          if (choice.trim() === '1') {
+            const name = prompt('Category name:', cat.title);
+            if (name) {
+              cat.title = name.trim();
+              save();
+              render();
+            }
+          } else if (choice.trim() === '2') {
+              if (confirm('Delete this category?')) {
+                const idx = tab.categories.indexOf(cat);
+                if (idx >= 0) tab.categories.splice(idx, 1);
+                save();
+                render();
+                // If settings modal is open, refresh the category order list
+                if (settingsModal.classList.contains('active')) {
+                  renderSettingsCategories();
+                }
+              }
+          }
+        });
+        actions.append(collapseBtn, addLinkBtn, gearBtn);
+        header.append(titleEl, actions);
+        card.appendChild(header);
+        // Links container
+        const linksContainer = document.createElement('div');
+        linksContainer.className = 'links';
+        if (!lockLayout) {
+          linksContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
+          linksContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            try {
+              const dataStr = e.dataTransfer.getData('text/plain');
+              if (!dataStr) return;
+              const data = JSON.parse(dataStr);
+              const { linkId, fromCatId } = data || {};
+              if (!linkId || !fromCatId) return;
+              if (fromCatId === cat.id) return;
+              const fromCat = tab.categories.find(c => c.id === fromCatId);
+              if (!fromCat) return;
+              const linkIndex = fromCat.links.findIndex(l => l.id === linkId);
+              if (linkIndex < 0) return;
+              const [linkObj] = fromCat.links.splice(linkIndex, 1);
+              if (!cat.links.some(l => l.id === linkObj.id)) cat.links.push(linkObj);
+              save();
+              render();
+            } catch {}
+          });
+        }
+        // Render each link
+        cat.links.forEach(link => {
+          if (linkFilter) {
+            const match = (link.title + ' ' + link.url).toLowerCase().includes(linkFilter);
+            if (!match) return;
+          }
+          // wrapper for link and edit button
+          const linkItem = document.createElement('div');
+          linkItem.className = 'link-item';
+          const a = document.createElement('a');
+          a.className = 'link';
+          a.href = link.url;
+          a.target = '_blank';
+          // Favicon
+          try {
+            const host = new URL(link.url).hostname;
+            const img = document.createElement('img');
+            img.className = 'favicon';
+            img.src = `https://www.google.com/s2/favicons?domain=${host}&sz=32`;
+            img.alt = '';
+            a.appendChild(img);
+          } catch {}
+          const textSpan = document.createElement('span');
+          textSpan.textContent = link.title;
+          a.appendChild(textSpan);
+          // Dragging
+          if (!lockLayout) {
+            a.draggable = true;
+            a.addEventListener('dragstart', (e) => {
+              e.dataTransfer.setData('text/plain', JSON.stringify({ linkId: link.id, fromCatId: cat.id }));
+              e.dataTransfer.effectAllowed = 'move';
+            });
+          }
+          linkItem.appendChild(a);
+          // Edit button for link: visible only when layout is unlocked
+          if (!lockLayout) {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-link';
+            editBtn.textContent = '✏️';
+            editBtn.title = 'Edit Link';
+            editBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              promptEditLink(cat, link);
+            });
+            linkItem.appendChild(editBtn);
+          }
+          linksContainer.appendChild(linkItem);
+        });
+        card.appendChild(linksContainer);
+        boardEl.appendChild(card);
+      });
+    }
+    // Full render (tabs + board)
+    function render() {
+      renderTabs();
+      renderBoard();
+    }
+
+    /**
+     * Render a list of categories in the settings modal with up/down arrows to
+     * adjust their sequence. When the layout is locked, adjustments are
+     * disabled. Clicking an arrow will swap the selected category with its
+     * neighbour and persist the change.
+     */
+    function renderSettingsCategories() {
+      // Clear any existing rows
+      categoriesOrderContainer.innerHTML = '';
+      const tab = tabsData[currentTabIndex];
+      if (!tab || !Array.isArray(tab.categories) || tab.categories.length === 0) {
+        // No categories to reorder
+        const row = document.createElement('div');
+        row.className = 'setting-row';
+        const span = document.createElement('span');
+        span.textContent = 'No categories to reorder';
+        row.appendChild(span);
+        categoriesOrderContainer.appendChild(row);
+        return;
+      }
+      // Header row
+      const header = document.createElement('div');
+      header.className = 'setting-row';
+      const hspan = document.createElement('span');
+      hspan.style.fontWeight = '600';
+      hspan.textContent = 'Reorder Categories';
+      header.appendChild(hspan);
+      categoriesOrderContainer.appendChild(header);
+      tab.categories.forEach((cat, idx) => {
+        const row = document.createElement('div');
+        row.className = 'setting-row';
+        // Title of category
+        const title = document.createElement('span');
+        title.textContent = cat.title;
+        // Container for arrows
+        const controls = document.createElement('div');
+        // Up arrow button
+        const upBtn = document.createElement('button');
+        upBtn.textContent = '↑';
+        // Down arrow button
+        const downBtn = document.createElement('button');
+        downBtn.textContent = '↓';
+        // Apply base styles via CSS; no specific class needed here
+        // Disable buttons when at boundaries
+        if (idx === 0) {
+          upBtn.disabled = true;
+        }
+        if (idx === tab.categories.length - 1) {
+          downBtn.disabled = true;
+        }
+        // Attach event listeners
+        upBtn.addEventListener('click', () => {
+          if (lockLayout) {
+            alert('Layout is locked. Unlock in Settings to edit.');
+            return;
+          }
+          if (idx === 0) return;
+          // Swap with previous
+          const cats = tab.categories;
+          const temp = cats[idx - 1];
+          cats[idx - 1] = cats[idx];
+          cats[idx] = temp;
+          save();
+          render();
+          renderSettingsCategories();
+        });
+        downBtn.addEventListener('click', () => {
+          if (lockLayout) {
+            alert('Layout is locked. Unlock in Settings to edit.');
+            return;
+          }
+          if (idx >= tab.categories.length - 1) return;
+          // Swap with next
+          const cats = tab.categories;
+          const temp = cats[idx + 1];
+          cats[idx + 1] = cats[idx];
+          cats[idx] = temp;
+          save();
+          render();
+          renderSettingsCategories();
+        });
+        controls.appendChild(upBtn);
+        controls.appendChild(downBtn);
+        // Layout: put title and controls on opposite sides
+        row.appendChild(title);
+        row.appendChild(controls);
+        categoriesOrderContainer.appendChild(row);
+      });
+    }
+
+    // Add a new link to category
+    function promptAddLink(category) {
+      if (lockLayout) {
+        alert('Layout is locked. Unlock in Settings to edit.');
+        return;
+      }
+      let url = prompt('URL (include http/https):');
+      if (!url) return;
+      url = url.trim();
+      if (!/^https?:\/\//i.test(url)) {
+        alert('Invalid URL. Must start with http/https.');
+        return;
+      }
+      const title = prompt('Title:', url.replace(/^https?:\/\//i, '').split('/')[0]);
+      if (!title) return;
+      category.links.push({ id: uid(), title: title.trim(), url });
+      save();
+      render();
+    }
+
+    // Edit an existing link within a category
+    function promptEditLink(category, link) {
+      if (lockLayout) {
+        alert('Layout is locked. Unlock in Settings to edit.');
+        return;
+      }
+      let url = prompt('Edit URL:', link.url);
+      if (!url) return;
+      url = url.trim();
+      if (!/^https?:\/\//i.test(url)) {
+        alert('Invalid URL. Must start with http/https.');
+        return;
+      }
+      const title = prompt('Edit Title:', link.title);
+      if (!title) return;
+      link.url = url;
+      link.title = title.trim();
+      save();
+      render();
+    }
+
+    // JSON export
+    function exportJson() {
+      const data = { tabs: tabsData, current: currentTabIndex };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookmark-board-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    // JSON import
+    function importJsonText(text) {
+      try {
+        const obj = JSON.parse(text);
+        if (obj && Array.isArray(obj.tabs)) {
+          tabsData = obj.tabs;
+          currentTabIndex = obj.current || 0;
+          save();
+          render();
+        } else {
+          alert('Invalid JSON structure');
+        }
+      } catch (err) {
+        alert('Failed to parse JSON: ' + err.message);
+      }
+    }
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          importJsonText(String(ev.target.result));
+          fileInput.value = '';
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    // Settings modal logic
+    function openSettings() {
+      // Ensure lock button and status reflect current state
+      updateLockToggleButton();
+      // Update theme button text: show name of theme to switch to
+      const isLight = document.body.classList.contains('light-mode');
+      settingsThemeBtn.textContent = isLight ? 'Dark' : 'Light';
+      // Show or hide delete tab option
+      deleteTabRow.style.display = tabsData.length > 1 ? 'flex' : 'none';
+      // Render the category order list for the current tab
+      renderSettingsCategories();
+      settingsModal.classList.add('active');
+    }
+    function closeSettings() {
+      settingsModal.classList.remove('active');
+    }
+    document.getElementById('settingsBtn').addEventListener('click', openSettings);
+    settingsCloseBtn.addEventListener('click', closeSettings);
+    toggleLockBtn.addEventListener('click', () => {
+      toggleLockLayout();
+      // toggleLockLayout already calls updateLockToggleButton
+    });
+    settingsAddCategoryBtn.addEventListener('click', () => {
+      if (lockLayout) {
+        alert('Layout is locked. Unlock in Settings to edit.');
+        return;
+      }
+      const name = prompt('Category name:');
+      if (!name) return;
+      const cat = { id: uid(), title: name.trim(), links: [] };
+      tabsData[currentTabIndex].categories.push(cat);
+      save();
+      render();
+      // Update the category reorder list if settings are open
+      renderSettingsCategories();
+    });
+    settingsThemeBtn.addEventListener('click', () => {
+      toggleTheme();
+      // Update button text after toggling
+      const isLight = document.body.classList.contains('light-mode');
+      settingsThemeBtn.textContent = isLight ? 'Dark' : 'Light';
+    });
+    settingsDeleteTabBtn.addEventListener('click', () => {
+      if (tabsData.length <= 1) return;
+      if (confirm('Delete the current tab and all its categories?')) {
+        tabsData.splice(currentTabIndex, 1);
+        if (currentTabIndex >= tabsData.length) currentTabIndex = tabsData.length - 1;
+        save();
+        closeSettings();
+        render();
+      }
+    });
+    settingsImportBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+    settingsExportBtn.addEventListener('click', () => {
+      exportJson();
+    });
+    // New: add tab via settings
+    settingsAddTabBtn.addEventListener('click', () => {
+      if (lockLayout) {
+        alert('Layout is locked. Unlock in Settings to edit.');
+        return;
+      }
+      const name = prompt('Tab name:');
+      if (!name) return;
+      tabsData.push({ id: uid(), title: name.trim(), categories: [] });
+      currentTabIndex = tabsData.length - 1;
+      save();
+      // If user creates a new tab from settings we can immediately re-render to reflect it
+      render();
+      // Keep settings open so they can continue editing
+      // Note: we intentionally do not close the settings modal here
+    });
+
+    // Search input handlers
+    searchCategoryInput.addEventListener('input', () => { renderBoard(); });
+    searchBookmarkInput.addEventListener('input', () => { renderBoard(); });
+
+    // Initialise on load
+    load();
+    render();
+  </script>
+</body>
+</html>
