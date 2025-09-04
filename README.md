@@ -16,7 +16,6 @@ A zero-backend, single-file **bookmark manager** that organizes links into **col
 
 * [Features](#features)
 * [Demo / Local Run](#demo--local-run)
-* [Deploy to GitHub Pages](#deploy-to-github-pages)
 * [How It Works](#how-it-works)
 * [Data Model](#data-model)
 * [Keyboard & UI UX](#keyboard--ui-ux)
@@ -48,23 +47,6 @@ A zero-backend, single-file **bookmark manager** that organizes links into **col
 1. Save your file as `index.html` (use the provided code).
 2. Double-click `index.html` to open in Chrome/Edge/Firefox/Safari.
 3. Click **⚙️ Settings** to add a **Category** and start dropping links.
-
-> Pro tip: keep the file under version control (`git init`) so you can track changes to your local HTML.
-
----
-
-## Deploy to GitHub Pages
-
-1. New repo → add `index.html` (this app) at the repo root.
-2. Commit & push:
-
-   ```bash
-   git add index.html
-   git commit -m "feat: initial Bookmark Board"
-   git push origin main
-   ```
-3. In GitHub: **Settings → Pages → Branch: `main` / root → Save**
-4. Your app is live at `https://<your-user>.github.io/<repo>/`
 
 ---
 
