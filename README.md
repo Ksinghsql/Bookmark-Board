@@ -107,25 +107,6 @@ A single-file, local-first bookmark dashboard. Multiple tabs (boards), categorie
 *  Mobile browsers work but drag-and-drop UX varies by device.
 
 ---
-
-## 📦 How to add this to GitHub
-
-1. Create a new repo (e.g., `bookmark-board`).
-2. Add two files:
-
-   * `bookmark-board.html` (your code above)
-   * `README.md` (this file)
-3. Commit & push.
-4. (Optional) Enable **GitHub Pages** → *Deploy from branch* → open the published URL.
-
----
-
-## 📝 License
-
-MIT (recommended). Add a `LICENSE` file if you want to open-source it.
-
----
-
 ## 💡 Pro tips
 
 *  Keep **Lock Layout = On** during daily use to avoid accidental edits.
