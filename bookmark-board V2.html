@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📑 Bookmark Board</title>
+  <style>
+    :root {
+      --bg: #1f2937;
+      --panel-bg: #111827;
+      --border: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --radius: 8px;
+      --shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    body.light-mode {
+      --bg: #f3f4f6;
+      --panel-bg: #ffffff;
+      --border: #d1d5db;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.5;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .tabs {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    nav .tabs li {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+    nav .tabs button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background-color 0.2s;
+    }
+    nav .tabs button.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+    nav .tabs li button.drag-over-tab {
+      background-color: var(--border);
+    }
+    nav .controls {
+      margin-left: auto;
+      display: flex;
+      gap: 0.5rem;
+      padding-right: 1rem;
+    }
+    nav .controls button {
+      background: var(--primary);
+      border: none;
+      color: white;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    nav .controls button.secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+    .search-area {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .search-area input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .search-area input::placeholder {
+      color: var(--muted);
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .empty-board {
+      text-align: center;
+      color: var(--muted);
+      padding: 3rem;
+      grid-column: 1 / -1;
+    }
+    .category {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+    .category.collapsed .links {
+      display: none;
+    }
+    .category.drag-over-target {
+      border-color: var(--primary);
+      background-color: color-mix(in srgb, var(--primary) 10%, var(--panel-bg));
+    }
+    .category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .category-title {
+      font-weight: 600;
+      margin: 0;
+      font-size: 1rem;
+      flex: 1;
+      cursor: text;
+    }
+    .category-title-input {
+      font-weight: 600;
+      font-size: 1rem;
+      width: 100%;
+      border: 1px solid var(--primary);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+    .category-actions button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .category-actions button:hover {
+      color: var(--primary);
+    }
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .link-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .link-item .link {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      line-height: 1.3;
+    }
+    .link-item button.edit-link {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .link-item button.edit-link:hover {
+      color: var(--primary);
+    }
+    .link img.favicon {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+    #settingsModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    #settingsModal.active {
+      display: flex;
+    }
+    #settingsModal .modal-content {
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      min-width: 320px;
+      max-width: 90%;
+      box-shadow: var(--shadow);
+    }
+    #settingsModal .modal-content h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    #settingsModal .modal-content .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    #settingsModal .modal-content .setting-row button {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    #categoriesOrderContainer .setting-row button {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--border);
+      color: var(--text);
+      cursor: pointer;
+      margin-left: 0.25rem;
+    }
+    #categoriesOrderContainer .setting-row button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #settingsModal .modal-content button.close-btn {
+      background: var(--border);
+      color: var(--text);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul class="tabs" id="tabsList"></ul>
+    <div class="controls">
+      <button id="settingsBtn" class="secondary" title="Settings">⚙️ Settings</button>
+      <input type="file" id="fileInput" accept="application/json" hidden />
+    </div>
+  </nav>
+  <div class="search-area">
+    <input id="searchCategory" type="text" placeholder="Find Category" />
+    <input id="searchBookmark" type="text" placeholder="Search Bookmarks" />
+  </div>
+  <div id="board" class="board"></div>
+  <div id="emptyState" class="empty-board" hidden>
+    No categories yet. Use the <strong>Settings</strong> (⚙️) button to add your first one.
+  </div>
+  <div id="settingsModal">
+    <div class="modal-content">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <span>Lock Layout</span>
+        <span id="lockStatus">Unlocked</span>
+        <button id="toggleLockBtn" class="secondary">Toggle</button>
+      </div>
+      <div class="setting-row">
+        <span>Theme</span>
+        <button id="settingsThemeBtn">Toggle</button>
+      </div>
+      <div class="setting-row" id="addTabRow">
+        <span>Add New Tab</span>
+        <button id="settingsAddTabBtn">+ Tab</button>
+      </div>
+      <div class="setting-row" id="renameTabRow">
+        <span>Rename Current Tab</span>
+        <button id="settingsRenameTabBtn" class="secondary">Rename</button>
+      </div>
+      <div class="setting-row" id="deleteTabRow">
+        <span>Delete Current Tab</span>
+        <button id="settingsDeleteTabBtn" class="secondary">Delete</button>
+      </div>
+      <div class="setting-row">
+        <span>Add Category to Current Tab</span>
+        <button id="settingsAddCategoryBtn">+ Category</button>
+      </div>
+      <div id="categoriesOrderContainer"></div>
+      <div class="setting-row">
+        <span>Import Data</span>
+        <button id="settingsImportBtn">Import JSON</button>
+      </div>
+      <div class="setting-row">
+        <span>Export Data</span>
+        <button id="settingsExportBtn">Export JSON</button>
+      </div>
+      <button id="settingsCloseBtn" class="close-btn">Close</button>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'bookmarkBoard.v1';
+    let tabsData = [];
+    let currentTabIndex = 0;
+    const tabsList = document.getElementById('tabsList');
+    const boardEl = document.getElementById('board');
+    const emptyStateEl = document.getElementById('emptyState');
+    const searchCategoryInput = document.getElementById('searchCategory');
+    const searchBookmarkInput = document.getElementById('searchBookmark');
+    const fileInput = document.getElementById('fileInput');
+    const settingsModal = document.getElementById('settingsModal');
+    const lockStatusEl = document.getElementById('lockStatus');
+    const toggleLockBtn = document.getElementById('toggleLockBtn');
+    const settingsAddCategoryBtn = document.getElementById('settingsAddCategoryBtn');
+    const settingsThemeBtn = document.getElementById('settingsThemeBtn');
+    const settingsDeleteTabBtn = document.getElementById('settingsDeleteTabBtn');
+    const deleteTabRow = document.getElementById('deleteTabRow');
+    const settingsImportBtn = document.getElementById('settingsImportBtn');
+    const settingsExportBtn = document.getElementById('settingsExportBtn');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    const settingsAddTabBtn = document.getElementById('settingsAddTabBtn');
+    const settingsRenameTabBtn = document.getElementById('settingsRenameTabBtn');
+    const renameTabRow = document.getElementById('renameTabRow');
+    const categoriesOrderContainer = document.getElementById('categoriesOrderContainer');
+    let lockLayout = false;
+    let draggingTabIndex = null;
+    let tabSwitchTimer = null;
+
+    function loadLockLayout() {
+      lockLayout = localStorage.getItem('bookmarkBoardLockLayout') === 'true';
+    }
+
+    function toggleLockLayout() {
+      lockLayout = !lockLayout;
+      localStorage.setItem('bookmarkBoardLockLayout', lockLayout);
+      updateLockToggleButton();
+      render();
+    }
+
+    function updateLockToggleButton() {
+      if (lockStatusEl) lockStatusEl.textContent = lockLayout ? 'Locked' : 'Unlocked';
+      if (toggleLockBtn) {
+        toggleLockBtn.textContent = lockLayout ? 'Unlock' : 'Lock';
+        toggleLockBtn.classList.toggle('secondary', !lockLayout);
+      }
+    }
+
+    function uid() {
+      return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    }
+
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const obj = JSON.parse(raw);
+          if (obj && Array.isArray(obj.tabs)) {
+            tabsData = obj.tabs;
+            currentTabIndex = obj.current || 0;
+          }
+        } catch {
+          tabsData = [];
+        }
+      }
+      if (tabsData.length === 0) {
+        tabsData.push({
+          id: uid(),
+          title: 'Main',
+          categories: []
+        });
+      }
+      if (currentTabIndex >= tabsData.length) currentTabIndex = 0;
+      tabsData.forEach(tab => {
+        if (Array.isArray(tab.categories)) {
+          tab.categories.forEach(cat => {
+            if (typeof cat.collapsed !== 'boolean') cat.collapsed = false;
+          });
+        }
+      });
+      loadTheme();
+      loadLockLayout();
+      updateLockToggleButton();
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        tabs: tabsData,
+        current: currentTabIndex
+      }));
+    }
+
+    function loadTheme() {
+      const theme = localStorage.getItem('bookmarkBoardTheme') || 'dark';
+      document.body.classList.toggle('light-mode', theme === 'light');
+    }
+
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle('light-mode');
+      localStorage.setItem('bookmarkBoardTheme', isLight ? 'light' : 'dark');
+    }
+
+    function moveLink(linkId, fromTabIndex, fromCatId, toTabIndex, toCatId) {
+      if (fromTabIndex === toTabIndex && fromCatId === toCatId) return;
+      const fromTab = tabsData[fromTabIndex];
+      const toTab = tabsData[toTabIndex];
+      if (!fromTab || !toTab) return;
+      const fromCat = fromTab.categories.find(c => c.id === fromCatId);
+      const toCat = toTab.categories.find(c => c.id === toCatId);
+      if (!fromCat || !toCat) return;
+      const linkIndex = fromCat.links.findIndex(l => l.id === linkId);
+      if (linkIndex < 0) return;
+      const [linkObj] = fromCat.links.splice(linkIndex, 1);
+      if (!toCat.links.some(l => l.id === linkObj.id)) {
+        toCat.links.push(linkObj);
+      }
+      save();
+      render();
+    }
+
+    function renderTabs() {
+      tabsList.innerHTML = '';
+      tabsData.forEach((tab, index) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.textContent = tab.title;
+        btn.classList.toggle('active', index === currentTabIndex);
+        btn.addEventListener('click', () => {
+          if (draggingTabIndex !== null) return;
+          currentTabIndex = index;
+          save();
+          render();
+        });
+        li.appendChild(btn);
+        if (!lockLayout && tabsData.length > 1) {
+          li.draggable = true;
+          li.addEventListener('dragstart', (e) => {
+            draggingTabIndex = index;
+            const img = new Image();
+            img.src = '';
+            e.dataTransfer.setDragImage(img, 0, 0);
+          });
+          li.addEventListener('dragend', () => {
+            draggingTabIndex = null;
+          });
+          li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+          });
+          li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggingTabIndex === null) return;
+            const dropIndex = Array.from(tabsList.children).indexOf(li);
+            if (dropIndex < 0 || dropIndex === draggingTabIndex) return;
+            const moved = tabsData.splice(draggingTabIndex, 1)[0];
+            tabsData.splice(dropIndex, 0, moved);
+            if (draggingTabIndex === currentTabIndex) {
+              currentTabIndex = dropIndex;
+            } else if (draggingTabIndex < currentTabIndex && dropIndex >= currentTabIndex) {
+              currentTabIndex--;
+            } else if (draggingTabIndex > currentTabIndex && dropIndex <= currentTabIndex) {
+              currentTabIndex++;
+            }
+            save();
+            render();
+          });
+        }
+        if (!lockLayout) {
+          btn.addEventListener('dragover', (e) => {
+            if (e.dataTransfer.types.includes('text/plain') && draggingTabIndex === null) {
+              e.preventDefault();
+              btn.classList.add('drag-over-tab');
+              if (index !== currentTabIndex && !tabSwitchTimer) {
+                tabSwitchTimer = setTimeout(() => {
+                  currentTabIndex = index;
+                  save();
+                  render();
+                }, 800);
+              }
+            }
+          });
+          btn.addEventListener('dragleave', () => {
+            btn.classList.remove('drag-over-tab');
+            clearTimeout(tabSwitchTimer);
+            tabSwitchTimer = null;
+          });
+          btn.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.classList.remove('drag-over-tab');
+            clearTimeout(tabSwitchTimer);
+            tabSwitchTimer = null;
+            const targetTab = tabsData[index];
+            if (!targetTab.categories || targetTab.categories.length === 0) {
+              return alert(`Tab "${targetTab.title}" has no categories to drop into.`);
+            }
+            try {
+              const dataStr = e.dataTransfer.getData('text/plain');
+              if (!dataStr) return;
+              const {
+                linkId,
+                fromCatId,
+                fromTabIndex
+              } = JSON.parse(dataStr);
+              if (!linkId || !fromCatId || typeof fromTabIndex !== 'number') return;
+              const toCatId = targetTab.categories[0].id;
+              moveLink(linkId, fromTabIndex, fromCatId, index, toCatId);
+            } catch {}
+          });
+        }
+        tabsList.appendChild(li);
+      });
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      const tab = tabsData[currentTabIndex];
+      if (!tab || !Array.isArray(tab.categories) || tab.categories.length === 0) {
+        emptyStateEl.hidden = false;
+        return;
+      }
+      emptyStateEl.hidden = true;
+      const catFilter = searchCategoryInput.value.trim().toLowerCase();
+      const linkFilter = searchBookmarkInput.value.trim().toLowerCase();
+      tab.categories.forEach(cat => {
+        if (catFilter && !cat.title.toLowerCase().includes(catFilter)) return;
+        const card = document.createElement('div');
+        card.className = 'category';
+        if (cat.collapsed) card.classList.add('collapsed');
+        if (!lockLayout) {
+          card.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            card.classList.add('drag-over-target');
+          });
+          card.addEventListener('dragleave', () => card.classList.remove('drag-over-target'));
+          card.addEventListener('drop', (e) => {
+            e.preventDefault();
+            card.classList.remove('drag-over-target');
+            try {
+              const dataStr = e.dataTransfer.getData('text/plain');
+              const {
+                linkId,
+                fromCatId,
+                fromTabIndex
+              } = JSON.parse(dataStr);
+              if (!linkId || !fromCatId || typeof fromTabIndex !== 'number') return;
+              moveLink(linkId, fromTabIndex, fromCatId, currentTabIndex, cat.id);
+            } catch {}
+          });
+        }
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'category-title';
+        titleEl.textContent = `${cat.title} (${cat.links.length})`;
+        if (!lockLayout) {
+          titleEl.title = 'Double-click to rename';
+          titleEl.addEventListener('dblclick', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'category-title-input';
+            input.value = cat.title;
+            const saveChange = () => {
+              const newTitle = input.value.trim();
+              if (newTitle && newTitle !== cat.title) {
+                cat.title = newTitle;
+                save();
+              }
+              render();
+            };
+            input.addEventListener('blur', saveChange);
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') input.blur();
+              if (e.key === 'Escape') render();
+            });
+            header.replaceChild(input, titleEl);
+            input.focus();
+          });
+        }
+        const actions = document.createElement('div');
+        actions.className = 'category-actions';
+        const collapseBtn = document.createElement('button');
+        collapseBtn.title = cat.collapsed ? 'Expand Category' : 'Collapse Category';
+        collapseBtn.textContent = cat.collapsed ? '▶' : '▼';
+        collapseBtn.addEventListener('click', () => {
+          cat.collapsed = !cat.collapsed;
+          save();
+          render();
+        });
+        const addLinkBtn = document.createElement('button');
+        addLinkBtn.title = 'Add Link';
+        addLinkBtn.textContent = '+';
+        addLinkBtn.addEventListener('click', () => {
+          promptAddLink(cat);
+        });
+        const gearBtn = document.createElement('button');
+        gearBtn.title = 'Category Settings';
+        gearBtn.textContent = '⚙️';
+        gearBtn.addEventListener('click', () => {
+          if (lockLayout) return alert('Layout is locked.');
+          const choice = prompt('Category settings:\n1. Rename\n2. Delete\nEnter 1 or 2:');
+          if (choice === '1') {
+            const name = prompt('New category name:', cat.title);
+            if (name) {
+              cat.title = name.trim();
+              save();
+              render();
+            }
+          } else if (choice === '2') {
+            if (confirm('Delete this category?')) {
+              const idx = tab.categories.indexOf(cat);
+              if (idx >= 0) tab.categories.splice(idx, 1);
+              save();
+              render();
+              if (settingsModal.classList.contains('active')) renderSettingsCategories();
+            }
+          }
+        });
+        actions.append(collapseBtn, addLinkBtn, gearBtn);
+        header.append(titleEl, actions);
+        card.appendChild(header);
+        const linksContainer = document.createElement('div');
+        linksContainer.className = 'links';
+        cat.links.forEach(link => {
+          if (linkFilter && !(link.title + ' ' + link.url).toLowerCase().includes(linkFilter)) return;
+          const linkItem = document.createElement('div');
+          linkItem.className = 'link-item';
+          const a = document.createElement('a');
+          a.className = 'link';
+          a.href = link.url;
+          a.target = '_blank';
+          try {
+            const host = new URL(link.url).hostname;
+            const img = document.createElement('img');
+            img.className = 'favicon';
+            img.src = `https://www.google.com/s2/favicons?domain=${host}&sz=32`;
+            img.alt = '';
+            a.appendChild(img);
+          } catch {}
+          const textSpan = document.createElement('span');
+          textSpan.textContent = link.title;
+          a.appendChild(textSpan);
+          if (!lockLayout) {
+            a.draggable = true;
+            a.addEventListener('dragstart', (e) => {
+              const dragData = {
+                linkId: link.id,
+                fromCatId: cat.id,
+                fromTabIndex: currentTabIndex
+              };
+              e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+              e.dataTransfer.effectAllowed = 'move';
+            });
+          }
+          linkItem.appendChild(a);
+          if (!lockLayout) {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-link';
+            editBtn.textContent = '✏️';
+            editBtn.title = 'Edit Link';
+            editBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              promptEditLink(cat, link);
+            });
+            linkItem.appendChild(editBtn);
+          }
+          linksContainer.appendChild(linkItem);
+        });
+        card.appendChild(linksContainer);
+        boardEl.appendChild(card);
+      });
+    }
+
+    function render() {
+      renderTabs();
+      renderBoard();
+    }
+
+    function renderSettingsCategories() {
+      categoriesOrderContainer.innerHTML = '';
+      const tab = tabsData[currentTabIndex];
+      if (!tab || !Array.isArray(tab.categories) || tab.categories.length === 0) {
+        categoriesOrderContainer.innerHTML = '<div class="setting-row"><span>No categories to reorder.</span></div>';
+        return;
+      }
+      const header = document.createElement('div');
+      header.className = 'setting-row';
+      header.innerHTML = '<span style="font-weight: 600;">Reorder Categories</span>';
+      categoriesOrderContainer.appendChild(header);
+      tab.categories.forEach((cat, idx) => {
+        const row = document.createElement('div');
+        row.className = 'setting-row';
+        const title = document.createElement('span');
+        title.textContent = cat.title;
+        const controls = document.createElement('div');
+        const upBtn = document.createElement('button');
+        upBtn.textContent = '↑';
+        upBtn.disabled = idx === 0;
+        const downBtn = document.createElement('button');
+        downBtn.textContent = '↓';
+        downBtn.disabled = idx === tab.categories.length - 1;
+        upBtn.addEventListener('click', () => {
+          if (lockLayout) return alert('Layout is locked.');
+          if (idx === 0) return;
+          [tab.categories[idx - 1], tab.categories[idx]] = [tab.categories[idx], tab.categories[idx - 1]];
+          save();
+          render();
+          renderSettingsCategories();
+        });
+        downBtn.addEventListener('click', () => {
+          if (lockLayout) return alert('Layout is locked.');
+          if (idx >= tab.categories.length - 1) return;
+          [tab.categories[idx + 1], tab.categories[idx]] = [tab.categories[idx], tab.categories[idx + 1]];
+          save();
+          render();
+          renderSettingsCategories();
+        });
+        controls.append(upBtn, downBtn);
+        row.append(title, controls);
+        categoriesOrderContainer.appendChild(row);
+      });
+    }
+
+    function promptAddLink(category) {
+      if (lockLayout) return alert('Layout is locked.');
+      let url = prompt('URL (include http/https):');
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url.trim())) return alert('Invalid URL.');
+      const title = prompt('Title:', url.replace(/^https?:\/\//i, '').split('/')[0]);
+      if (!title) return;
+      category.links.push({
+        id: uid(),
+        title: title.trim(),
+        url: url.trim()
+      });
+      save();
+      render();
+    }
+
+    function promptEditLink(category, link) {
+      if (lockLayout) return alert('Layout is locked.');
+      const choice = prompt(`Link settings:\n1. Edit\n2. Delete\nEnter 1 or 2:`);
+      if (choice === '1') {
+        let url = prompt('Edit URL:', link.url);
+        if (!url) return;
+        if (!/^https?:\/\//i.test(url.trim())) return alert('Invalid URL.');
+        const title = prompt('Edit Title:', link.title);
+        if (!title) return;
+        link.url = url.trim();
+        link.title = title.trim();
+        save();
+        render();
+      } else if (choice === '2') {
+        if (confirm(`Delete link "${link.title}"?`)) {
+          const index = category.links.indexOf(link);
+          if (index > -1) {
+            category.links.splice(index, 1);
+            save();
+            render();
+          }
+        }
+      }
+    }
+
+    function exportJson() {
+      const data = {
+        tabs: tabsData,
+        current: currentTabIndex
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json'
+      });
+      const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookmark-board-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const obj = JSON.parse(String(ev.target.result));
+          if (obj && Array.isArray(obj.tabs)) {
+            tabsData = obj.tabs;
+            currentTabIndex = obj.current || 0;
+            save();
+            render();
+          } else {
+            alert('Invalid JSON structure');
+          }
+        } catch (err) {
+          alert('Failed to parse JSON: ' + err.message);
+        }
+        fileInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    function openSettings() {
+      updateLockToggleButton();
+      const isLight = document.body.classList.contains('light-mode');
+      settingsThemeBtn.textContent = isLight ? 'Use Dark Theme' : 'Use Light Theme';
+      deleteTabRow.style.display = tabsData.length > 1 ? 'flex' : 'none';
+      renameTabRow.style.display = tabsData.length > 0 ? 'flex' : 'none';
+      renderSettingsCategories();
+      settingsModal.classList.add('active');
+    }
+
+    function closeSettings() {
+      settingsModal.classList.remove('active');
+    }
+    document.getElementById('settingsBtn').addEventListener('click', openSettings);
+    settingsCloseBtn.addEventListener('click', closeSettings);
+    toggleLockBtn.addEventListener('click', toggleLockLayout);
+    settingsAddCategoryBtn.addEventListener('click', () => {
+      if (lockLayout) return alert('Layout is locked.');
+      const name = prompt('Category name:');
+      if (name) {
+        tabsData[currentTabIndex].categories.push({
+          id: uid(),
+          title: name.trim(),
+          links: []
+        });
+        save();
+        render();
+        renderSettingsCategories();
+      }
+    });
+    settingsThemeBtn.addEventListener('click', () => {
+      toggleTheme();
+      const isLight = document.body.classList.contains('light-mode');
+      settingsThemeBtn.textContent = isLight ? 'Use Dark Theme' : 'Use Light Theme';
+    });
+    settingsDeleteTabBtn.addEventListener('click', () => {
+      if (tabsData.length <= 1) return;
+      if (confirm('Delete current tab and all its categories?')) {
+        tabsData.splice(currentTabIndex, 1);
+        if (currentTabIndex >= tabsData.length) currentTabIndex = tabsData.length - 1;
+        save();
+        closeSettings();
+        render();
+      }
+    });
+    settingsRenameTabBtn.addEventListener('click', () => {
+      if (lockLayout) return alert('Layout is locked.');
+      const currentTitle = tabsData[currentTabIndex].title;
+      const newTitle = prompt('New name for tab:', currentTitle);
+      if (newTitle && newTitle.trim() !== currentTitle) {
+        tabsData[currentTabIndex].title = newTitle.trim();
+        save();
+        render();
+      }
+    });
+    settingsImportBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+    settingsExportBtn.addEventListener('click', exportJson);
+    settingsAddTabBtn.addEventListener('click', () => {
+      if (lockLayout) return alert('Layout is locked.');
+      const name = prompt('New tab name:');
+      if (name) {
+        tabsData.push({
+          id: uid(),
+          title: name.trim(),
+          categories: []
+        });
+        currentTabIndex = tabsData.length - 1;
+        save();
+        render();
+        openSettings();
+      }
+    });
+    searchCategoryInput.addEventListener('input', () => {
+      renderBoard();
+    });
+    searchBookmarkInput.addEventListener('input', () => {
+      renderBoard();
+    });
+    load();
+    render();
+  </script>
+</body>
+</html>
