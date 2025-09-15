@@ -112,3 +112,33 @@ A single-file, local-first bookmark dashboard. Multiple tabs (boards), categorie
 *  Keep **Lock Layout = On** during daily use to avoid accidental edits.
 *  Use **Export JSON** before major changes.
 *  Seed categories (e.g., Docs, Learning, Tools) to stay organized from day one.
+
+----
+
+# Update 
+
+--------
+
+# Bookmark Board v1.1 - The Cross-Tab Update!
+
+We're excited to release a major update focused on improving flexibility and workflow! This version introduces the much-requested ability to move bookmarks between tabs, along with several other quality-of-life enhancements.
+
+## ✨ What's New
+
+* **Move Bookmarks Between Tabs**: You can now easily organize your bookmarks across different boards!
+    * **How it works**: Drag a bookmark and hover it over any tab button. The board will automatically switch, allowing you to drop the bookmark into a new category. If you drop it directly on the tab, it will be added to the first category.
+
+* **Inline Category Renaming**: Quickly rename your categories without opening any menus.
+    * **How it works**: Simply **double-click** any category title to edit it directly on the board. Press `Enter` or click away to save.
+
+* **Tab Renaming**: Your tabs can now be renamed to better suit your projects.
+    * **How it works**: Open the **Settings** (⚙️) modal and use the new "Rename Current Tab" option.
+
+## 🔧 Other Improvements
+
+* **Visual Drag-and-Drop Feedback**: Categories now highlight with a blue border when you drag a bookmark over them, making it clear where you're about to drop it.
+* **Code Refinements**: The underlying code for handling drag-and-drop has been refactored and generalized for better maintainability.
+
+---
+
+Happy bookmarking!
